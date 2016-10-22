@@ -7,12 +7,12 @@ import argparse
 import difflib
 import html
 from lxml.etree import iterparse, XMLPullParser
+import mwparserfromhell as mw
 
 # parse input arguments
 parser = argparse.ArgumentParser(description='USPTO patent parser.')
 parser.add_argument('source', type=str, help='path to xml file to parse')
 parser.add_argument('output', type=str, help='path to csv output')
-parser.add_argument('--log', type=str, help='log file to output to')
 parser.add_argument('--limit', type=int, default=None, help='number of articles to parse')
 args = parser.parse_args()
 
@@ -43,22 +43,78 @@ def html_unescape(text):
     text = text.replace('\xa0', ' ')
     return text
 
+# recursively extract text from nodes
+def parse_node(node):
+    t = type(node)
+    if t is mw.wikicode.Wikicode:
+        return ' '.join([parse_node(n) for n in node.nodes])
+    elif t is mw.nodes.Template:
+        name = node.name.strip()
+        if name.startswith('cite'):
+            return ' '.join([parse_node(node.get(f) if node.has(f) else '') for f in ['title', 'last1', 'last2']])
+        else:
+            return ''
+    elif t is mw.nodes.Wikilink:
+        if node.title.startswith('Image:') or node.title.startswith('Category:') or node.title.startswith('File:'):
+            return ''
+        else:
+            return parse_node(node.title)
+    elif t is mw.nodes.Heading:
+        return parse_node(node.title)
+    elif t is mw.nodes.ExternalLink:
+        if node.title:
+            return parse_node(node.title)
+        else:
+            return ''
+    elif t is mw.nodes.extras.Parameter:
+        return parse_node(node.value)
+    elif t is mw.nodes.Tag:
+        if node.tag == 'gallery' or node.contents is None:
+            return ''
+        else:
+            return parse_node(node.contents)
+    elif t is mw.nodes.Comment:
+        return parse_node(node.contents)
+    elif t is mw.nodes.HTMLEntity:
+        return node.normalize()
+    elif t is mw.nodes.Text:
+        return node.value
+    elif t is mw.nodes.Argument:
+        return ''
+    elif t is str:
+        return node
+    # elif node is None:
+    #    return ''
+    else:
+        raise(Exception('Unrecognized Type %s: %s' % (t, node)))
+
+def parse_wiki(wiki):
+    wiki = html_unescape(wiki)
+    tree = mw.parse(wiki)
+    text = parse_node(tree)
+    return text
+
 # regularize to token list
 def reduce_wiki(text):
-    text = re.sub(r'([^\w ]|_)', ' ', text) # remove non-alphanumeric, unicode aware
+    text = re.sub(r'[^a-zA-Z ]', ' ', text) # remove non-text
     text = re.sub(r' {2,}', ' ', text) # compress spaces again
     return text.lower().strip() # to lowercase and trim
 
 def tokenize_wiki(text):
-    wiki = html_unescape(text)
+    try:
+        wiki = parse_wiki(text)
+    except Exception as e:
+        print()
+        print('PARSE ERROR')
+        print(text)
+        print()
+        wiki = ''
     red = reduce_wiki(wiki)
     return red.split()
 
 # set up files
 fin = open(args.source, encoding='utf-8')
 fout = open(args.output, 'w', encoding='utf-8')
-flog = open(args.log, 'w', encoding='utf-8', buffering=1) if args.log is not None else sys.stdout
-plog = lambda s: flog.write(str(s)+'\n')
 
 # create differ
 sm = difflib.SequenceMatcher()
@@ -69,7 +125,7 @@ n_art = 0
 text = None
 for (i, line) in enumerate(fin):
     if i % 1000000 == 0:
-        plog(i)
+        print(i)
 
     ret = re.match('( *)<([^>]*?)>', line)
     if ret:
@@ -90,7 +146,7 @@ for (i, line) in enumerate(fin):
                 try:
                     toks = tokenize_wiki(text)
                 except:
-                    plog('PARSE ERROR: %s, %s, %s' % (aid, rid, title))
+                    print('PARSE ERROR: %s, %s, %s' % (aid, rid, title))
                     toks = []
                 text = None
             else:
@@ -112,7 +168,7 @@ for (i, line) in enumerate(fin):
         last_toks = []
     elif tag == 'ns':
         if body == '0':
-            plog(title)
+            print(title)
             in_art = True
         else:
             in_art = False
@@ -130,18 +186,11 @@ for (i, line) in enumerate(fin):
             try:
                 toks = tokenize_wiki(body)
             except:
-                plog('PARSE ERROR: %s, %s, %s' % (aid, rid, title))
+                print('PARSE ERROR: %s, %s, %s' % (aid, rid, title))
                 toks = []
             text = None
         else:
             text = body
-    elif tag == '/text':
-        try:
-            toks = tokenize_wiki(text)
-        except:
-            plog('PARSE ERROR: %s, %s, %s' % (aid, rid, title))
-            toks = []
-        text = None
     elif tag == '/revision':
         if toks is None:
             revn = []
@@ -159,4 +208,4 @@ for (i, line) in enumerate(fin):
 
 # clean up
 fout.close()
-plog(n_art)
+print(n_art)

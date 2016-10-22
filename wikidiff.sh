@@ -10,9 +10,12 @@ OUTPATH=work/docker/output
 
 DATE=20160901
 EXT=lrz
-UNZIP="lrunzip"
+UNZIP="lrunzip -m 60 -p 1"
 INFILE=enwiki-$DATE-pages-meta-history$1.xml-$2
 OUTFILE=enwiki-$DATE-diff-$1-$2.csv
+
+PARSER="bin/pypy wikidiff_py2.py"
+PARSE_OPTS="--log=parser.log"
 
 echo "starting"
 
@@ -23,9 +26,9 @@ echo "unzipping wiki history"
 $UNZIP $INFILE.$EXT
 
 echo "parsing wiki history"
-python3 wikidiff_fast.py --log=parser.log $INFILE $OUTFILE
+$PARSER $PARSE_OPTS $INFILE $OUTFILE
 
-if [ $? -eq 0 ]
+if [ $? -eq 0 ]; then
     echo "copying output back home"
     scp $SCP_OPTS -i $KEYFILE $OUTFILE $USER@$SERVER:$OUTPATH/
     echo "done"

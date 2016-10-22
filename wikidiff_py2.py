@@ -5,8 +5,11 @@ import re
 import sys
 import argparse
 import difflib
-import html
+import io
+from HTMLParser import HTMLParser
 from lxml.etree import iterparse, XMLPullParser
+html = HTMLParser()
+open = io.open
 
 # parse input arguments
 parser = argparse.ArgumentParser(description='USPTO patent parser.')
@@ -40,7 +43,7 @@ def clear(elem):
 # revert html codes
 def html_unescape(text):
     text = html.unescape(text)
-    text = text.replace('\xa0', ' ')
+    text = text.replace(u'\xa0', u' ')
     return text
 
 # regularize to token list
@@ -58,7 +61,7 @@ def tokenize_wiki(text):
 fin = open(args.source, encoding='utf-8')
 fout = open(args.output, 'w', encoding='utf-8')
 flog = open(args.log, 'w', encoding='utf-8', buffering=1) if args.log is not None else sys.stdout
-plog = lambda s: flog.write(str(s)+'\n')
+plog = lambda s: flog.write(unicode(s)+'\n')
 
 # create differ
 sm = difflib.SequenceMatcher()
