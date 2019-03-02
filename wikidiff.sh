@@ -5,12 +5,12 @@ SCP_OPTS="-o StrictHostKeyChecking=no"
 USER=doug
 SERVER=dohan.dyndns.org
 
-INPATH=work/docker/data
+INPATH=work/docker/history
 OUTPATH=work/docker/output
 
 DATE=20160901
 EXT=lrz
-UNZIP="lrunzip -m 60 -p 1"
+UNZIP="lrunzip -f -m 60 -p 1"
 INFILE=enwiki-$DATE-pages-meta-history$1.xml-$2
 OUTFILE=enwiki-$DATE-diff-$1-$2.csv
 

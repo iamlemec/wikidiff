@@ -25,7 +25,7 @@ template = jinja2.Template(open(args.template).read())
 
 ids = [re.match(r'enwiki-(\d{8})-pages-meta-history(\d{1,2})\.xml-(p\d{9}p\d{9})', t).groups() for t in tags]
 
-pods = [b.decode() for b in check_output("kubectl get pods -a | tail -n +2 | egrep '(Running|Pending|Complete)' | cut -d' ' -f 1", shell=True).split()]
+pods = [b.decode() for b in check_output("kubectl get pods -a | tail -n +2 | egrep '(Running|Pending|Evicted|Complete)' | cut -d' ' -f 1", shell=True).split()]
 
 n = 0
 for (date, i1, i2) in ids:
@@ -40,7 +40,7 @@ for (date, i1, i2) in ids:
         continue
 
     if jobname in pods:
-        print('pod %s running or completed, skipping' % jobname)
+        print('pod %s is active, skipping' % jobname)
         print()
         continue
 

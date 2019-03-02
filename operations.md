@@ -13,7 +13,7 @@ docker build -t gcr.io/thesecretaryofwar/python:v1 .
 gcloud docker push gcr.io/thesecretaryofwar/python:v1
 
 ## create cluster
-gcloud container clusters create wikidiff --num-nodes=1 --disk-size=250 --zone=us-east1-b --machine-type=n1-highmem-2
+gcloud container clusters create wikidiff --num-nodes=12 --disk-size=500 --zone=us-east1-b --machine-type=n1-highmem-2
 
 ## delete cluster
 gcloud container clusters delete wikidiff

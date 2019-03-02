@@ -21,4 +21,4 @@ spec:
       readOnly: true
       mountPath: /etc/secret-volume
     command: ["bash", "wikidiff.sh", "{{ id1 }}", "{{ id2 }}"]
-  # restartPolicy: Never
+  restartPolicy: OnFailure
