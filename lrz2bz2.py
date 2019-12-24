@@ -17,4 +17,3 @@ for tag in sorted(targs):
     run(f'lrunzip -o {dst}/{tag} {src}/{tag}.lrz')
     print(f'compressing {tag}')
     run(f'pbzip2 -p8 {dst}/{tag}')
-
